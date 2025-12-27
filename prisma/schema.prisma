@@ -75,6 +75,7 @@ enum WorkshopStatus {
   ACTIVE
   CANCELLED
   FULL
+  DISABLED
 }
 
 // =====================

@@ -725,6 +725,76 @@ On calcule l’âge de l’enfant au moment de l’atelier (differenceInYears).
 On vérifie que chaque réservation n’a aucun chevauchement avec les autres de l’enfant.
 Les doublons sont déjà bloqués par Prisma (@@unique([childId, workshopId])).
 
+🧭 Checkpoint validé
+
+Repo clean ✅
+Prisma version 6 OK ✅
+Seed OK ✅
+Push Github OK ✅
+
+👉 Triggers PostgreSQL = choix backend mûr
+
+C’est un choix avancé, et cohérent pour 24hKids.
+Pourquoi c’est pertinent ici :
+--- Règle	Trigger DB
+--- Chevauchement ateliers	✅
+--- Capacité max atelier	✅
+--- Âge min / max	✅
+--- Cohérence temporelle	✅
+--- Sécurité multi-process	✅
+
+👉 La DB devient la source de vérité, pas l’API.
+
+C’est exactement ce qu’on veut pour :
+--- réservations concurrentes
+--- imports
+--- batchs
+--- futures apps mobiles
+
+👉 Répartition des responsabilités (propre)
+
+Très important :
+--- Couche	: Rôle
+--- Prisma	: Modélisation + relations
+--- PostgreSQL	: Contraintes métier dures
+--- Backend TS	: Orchestration / UX / messages
+--- Front	: Affichage
+
+👉 On passe en mode DB-first avancé.
+
+### Étape A — Triggers PostgreSQL (concrets)
+On écrit :
+🔒 Trigger anti-chevauchement enfant
+🔢 Trigger capacité atelier
+🎂 Trigger contrôle âge
+⏱️ Trigger cohérence dates
+
+### Étape B — Prisma
+--- Prisma consomme
+--- Les erreurs DB remontent proprement
+--- Aucun contournement possible
+
+### backend
+Vu notre schéma et triggers PostgreSQL, je propose de commencer par le service de réservation (Booking Service), car c’est le cœur du projet et là où toutes les règles critiques se rencontrent.
+
+🔹 Booking Service – Fonctions clés :
+
+👉 createBooking(childId, workshopId) : 
+--- Vérifie l’existence child + workshop
+--- Tente l’insertion (trigger vérifie chevauchement, âge, capacité)
+--- Retourne succès / erreur claire
+
+👉 cancelBooking(bookingId)
+--- Annule réservation, ajuste statut atelier si FULL → ACTIVE
+
+👉 listBookings(childId?)
+--- Récupère bookings filtrées par enfant ou atelier
+
+👉 checkAvailability(workshopId)
+--- Retourne capacité restante et statut FULL / WAITLIST
+
+💡 Avantage : avec triggers en place, le service est très simple, il n’a besoin que de gestion d’erreur et orchestration.
+
 
 ---
 © 24hKids — Projet éducatif autour du numérique
