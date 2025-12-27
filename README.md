@@ -207,7 +207,524 @@ Chaque atelier correspond à **une session unique**, réservable indépendamment
 
 > 📘 **Phase actuelle** : cadrage & fondations
 > 🧱 Prochaine étape : définition du schéma Prisma
+plan clair des entités et relations pour ton projet 24hkids-platform. On va intégrer :
+
+1️⃣ Cartographie des entités principales
+
+### Enfants (Child)
+Nom, prénom, date de naissance, etc.
+Relation avec les parents (Parent).
+Parents (Parent)
+Contact, email, téléphone.
+Relation avec les enfants (un parent peut avoir plusieurs enfants).
+
+### Ateliers (Workshop)
+Nom, description, tranche d’âge, capacité max, horaire.
+Relation avec les réservations.
+
+### Réservations (Booking)
+Quel enfant est inscrit à quel atelier.
+Validation des règles métier :
+Chevauchement horaire interdit.
+Capacité max respectée.
+Tranche d’âge.
+
+### Règles métier
+On ne mettra pas directement les règles dans Prisma, mais les contraintes de capacité et d’âge peuvent être exprimées via des champs (par exemple minAge, maxAge).
+Chevauchement → validation côté backend au moment de créer la réservation.
+
+2️⃣ Relations clés
+--- Parent 1:N Child → un parent peut avoir plusieurs enfants.
+--- Child N:M Workshop via Booking → un enfant peut s’inscrire à plusieurs ateliers, un atelier peut avoir plusieurs enfants.
+On ajoutera des timestamps pour le suivi (createdAt, updatedAt).
+
+3️⃣ Ébauche du schema.prisma
+On commence ligne par ligne, en partant des parents :
+```
+model Parent {
+  id        Int      @id @default(autoincrement())
+  firstName String
+  lastName  String
+  email     String   @unique
+  phone     String?
+  children  Child[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Child {
+  id        Int       @id @default(autoincrement())
+  firstName String
+  lastName  String
+  birthDate DateTime
+  parent    Parent    @relation(fields: [parentId], references: [id])
+  parentId  Int
+  bookings  Booking[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Workshop {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  minAge      Int
+  maxAge      Int
+  capacity    Int
+  bookings    Booking[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Booking {
+  id         Int       @id @default(autoincrement())
+  child      Child     @relation(fields: [childId], references: [id])
+  childId    Int
+  workshop   Workshop  @relation(fields: [workshopId], references: [id])
+  workshopId Int
+  createdAt  DateTime  @default(now())
+}
+```
+✅ Avec ça, on a déjà :
+--- Les parents et enfants liés.
+--- Les ateliers et réservations.
+--- Les champs pour règles métier (âge, capacité).
+--- Les timestamps pour le suivi.
+
+💡 Etapes logiques :
+On va ajouter contraintes supplémentaires côté Prisma et préparer les triggers ou validations côté backend pour :
+--- Interdire le chevauchement.
+--- Respecter la capacité max.
+--- Respecter la tranche d’âge.
+
+On va maintenant ajouter des contraintes avancées dans Prisma pour renforcer la logique métier dès la base, sans tout coder côté backend.
+
+L’objectif ici :
+--- Éviter qu’un enfant réserve 2 fois le même atelier.
+--- Poser les bases pour chevauchement futur (on pourra le gérer côté backend).
+--- Unique par combinaison là où c’est logique.
+
+Le chevauchement horaire est compliqué à gérer dans Prisma seul. ✅ On fera côté backend, mais les champs startTime et endTime dans Workshop suffisent pour calculer si une nouvelle réservation est compatible ou non.
+
+De même, pour respecter l’âge :
+
+const childAge = differenceInYears(workshop.startTime, child.birthDate)
+if (childAge < workshop.minAge || childAge > workshop.maxAge) {
+  throw new Error("L'enfant n'est pas dans la tranche d'âge de l'atelier")
+}
+
+C’est une logique backend simple qui utilise le minAge et maxAge déjà stockés dans le modèle Workshop.
+
+✅ Avec ces contraintes :
+--- La base bloque les doublons.
+--- Les recherches sont plus rapides.
+--- Les règles métier principales sont couvertes côté backend.
+```
+// =======================================
+// 24hKids Platform - schema.prisma FINAL
+// =======================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // ou "mysql" selon ton choix
+  url      = env("DATABASE_URL")
+}
+
+// =====================
+// Modèle Parent
+// =====================
+model Parent {
+  id          Int      @id @default(autoincrement())
+  firstName   String
+  lastName    String
+  email       String   @unique
+  phone       String?
+  children    Child[]
+  notifyEmail Boolean  @default(true)
+  notifySMS   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// =====================
+// Modèle Child (Enfant)
+// =====================
+model Child {
+  id          Int       @id @default(autoincrement())
+  firstName   String
+  lastName    String
+  birthDate   DateTime
+  parent      Parent    @relation(fields: [parentId], references: [id])
+  parentId    Int
+  bookings    Booking[]
+  allergies   String?
+  medicalNote String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([parentId])
+}
+
+// =====================
+// Modèle Workshop (Atelier)
+// =====================
+model Workshop {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  minAge      Int
+  maxAge      Int
+  capacity    Int
+  location    String?
+  status      WorkshopStatus @default(ACTIVE)
+  bookings    Booking[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([startTime, endTime])
+}
+
+// Statuts des ateliers
+enum WorkshopStatus {
+  ACTIVE
+  CANCELLED
+  FULL
+}
+
+// =====================
+// Modèle Booking (Réservation)
+// =====================
+model Booking {
+  id          Int       @id @default(autoincrement())
+  child       Child     @relation(fields: [childId], references: [id])
+  childId     Int
+  workshop    Workshop  @relation(fields: [workshopId], references: [id])
+  workshopId  Int
+  status      BookingStatus @default(CONFIRMED)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Un enfant ne peut pas réserver deux fois le même atelier
+  @@unique([childId, workshopId])
+
+  // Index utiles pour les recherches
+  @@index([childId])
+  @@index([workshopId])
+}
+
+// Statuts des réservations
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+  WAITLIST
+}
+```
+
+✅ Points forts de ce schema
+
+Relations claires :
+--- Parent 1:N Child
+--- Child N:M Workshop via Booking
+
+Contraintes et intégrité :
+--- @@unique([childId, workshopId]) → pas de doublons.
+--- Index pour optimiser les recherches.
+
+Règles métier intégrées côté backend :
+--- Chevauchement → validation à la réservation.
+--- Tranche d’âge → validation à la réservation.
+--- Capacité → backend peut vérifier le nombre de bookings.
+
+Statuts et notifications :
+--- WorkshopStatus et BookingStatus.
+--- Notifications parent (notifyEmail, notifySMS).
+--- Timestamps partout pour suivi et stats.
+
+💡 Prochaine étape : on peut maintenant créer un seed initial pour :
+--- 2-3 parents
+--- 3-5 enfants
+--- 5 ateliers réels
+--- Quelques réservations test
+
+Ça nous permettra de tester tout le moteur de réservation et règles métier directement.
+
+Voici un seed complet prisma/seed.ts ou prisma/seed.js selon le setup TypeScript/JavaScript :
+```
+// prisma/seed.ts
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log("🌱 Début du seed...");
+
+  // =====================
+  // Création des Parents
+  // =====================
+  const parent1 = await prisma.parent.create({
+    data: {
+      firstName: "Alice",
+      lastName: "Martin",
+      email: "alice.martin@example.com",
+      phone: "0600000001",
+      notifyEmail: true,
+      notifySMS: false,
+    },
+  });
+
+  const parent2 = await prisma.parent.create({
+    data: {
+      firstName: "Bruno",
+      lastName: "Dupont",
+      email: "bruno.dupont@example.com",
+      phone: "0600000002",
+      notifyEmail: true,
+      notifySMS: true,
+    },
+  });
+
+  const parent3 = await prisma.parent.create({
+    data: {
+      firstName: "Caroline",
+      lastName: "Lemoine",
+      email: "caroline.lemoine@example.com",
+      phone: "0600000003",
+    },
+  });
+
+  // =====================
+  // Création des Enfants
+  // =====================
+  const child1 = await prisma.child.create({
+    data: {
+      firstName: "Léo",
+      lastName: "Martin",
+      birthDate: new Date("2016-03-12"),
+      parentId: parent1.id,
+    },
+  });
+
+  const child2 = await prisma.child.create({
+    data: {
+      firstName: "Emma",
+      lastName: "Martin",
+      birthDate: new Date("2018-06-20"),
+      parentId: parent1.id,
+      allergies: "Arachides",
+    },
+  });
+
+  const child3 = await prisma.child.create({
+    data: {
+      firstName: "Lucas",
+      lastName: "Dupont",
+      birthDate: new Date("2017-11-05"),
+      parentId: parent2.id,
+    },
+  });
+
+  const child4 = await prisma.child.create({
+    data: {
+      firstName: "Chloé",
+      lastName: "Lemoine",
+      birthDate: new Date("2015-09-18"),
+      parentId: parent3.id,
+      medicalNote: "Asthme léger",
+    },
+  });
+
+  const child5 = await prisma.child.create({
+    data: {
+      firstName: "Noah",
+      lastName: "Dupont",
+      birthDate: new Date("2019-01-22"),
+      parentId: parent2.id,
+    },
+  });
+
+  // =====================
+  // Création des Ateliers
+  // =====================
+  const workshop1 = await prisma.workshop.create({
+    data: {
+      name: "Atelier Peinture",
+      description: "Peinture créative pour enfants",
+      startTime: new Date("2026-01-05T10:00:00"),
+      endTime: new Date("2026-01-05T12:00:00"),
+      minAge: 4,
+      maxAge: 8,
+      capacity: 10,
+      location: "Salle A",
+      status: "ACTIVE",
+    },
+  });
+
+  const workshop2 = await prisma.workshop.create({
+    data: {
+      name: "Mini Foot",
+      description: "Football adapté aux 5-8 ans",
+      startTime: new Date("2026-01-05T14:00:00"),
+      endTime: new Date("2026-01-05T16:00:00"),
+      minAge: 5,
+      maxAge: 8,
+      capacity: 12,
+      location: "Terrain extérieur",
+    },
+  });
+
+  const workshop3 = await prisma.workshop.create({
+    data: {
+      name: "Atelier Lego",
+      description: "Construction et créativité",
+      startTime: new Date("2026-01-06T10:00:00"),
+      endTime: new Date("2026-01-06T12:00:00"),
+      minAge: 4,
+      maxAge: 10,
+      capacity: 8,
+      location: "Salle B",
+    },
+  });
+
+  const workshop4 = await prisma.workshop.create({
+    data: {
+      name: "Yoga Enfants",
+      description: "Découverte du yoga pour les petits",
+      startTime: new Date("2026-01-06T14:00:00"),
+      endTime: new Date("2026-01-06T15:30:00"),
+      minAge: 4,
+      maxAge: 10,
+      capacity: 15,
+      location: "Salle C",
+    },
+  });
+
+  const workshop5 = await prisma.workshop.create({
+    data: {
+      name: "Atelier Musique",
+      description: "Découverte des instruments",
+      startTime: new Date("2026-01-07T10:00:00"),
+      endTime: new Date("2026-01-07T12:00:00"),
+      minAge: 5,
+      maxAge: 10,
+      capacity: 10,
+      location: "Salle D",
+    },
+  });
+
+  // =====================
+  // Création des Réservations
+  // =====================
+  await prisma.booking.createMany({
+    data: [
+      { childId: child1.id, workshopId: workshop1.id },
+      { childId: child2.id, workshopId: workshop1.id },
+      { childId: child3.id, workshopId: workshop2.id },
+      { childId: child5.id, workshopId: workshop2.id },
+      { childId: child4.id, workshopId: workshop4.id },
+      { childId: child1.id, workshopId: workshop3.id },
+    ],
+  });
+
+  console.log("✅ Seed terminé !");
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+```
+
+💡 Points clés
+--- createMany pour les bookings rapides.
+--- Tranches d’âge et capacités sont déjà dans Workshop → backend vérifiera les règles.
+--- On a des exemples de parents avec plusieurs enfants, et des enfants dans plusieurs ateliers.
+--- Allergies et notes médicales inclus pour tests.
+
+On va créer un script de test automatique pour valider tes règles métier de réservation.
+Ce script va vérifier pour chaque réservation :
+--- Pas de doublon (un enfant ne peut pas réserver deux fois le même atelier).
+--- Pas de chevauchement (un enfant ne peut pas être sur deux ateliers en même temps).
+--- Tranche d’âge respectée (l’enfant doit correspondre à minAge / maxAge de l’atelier).
+
+Voici un exemple en TypeScript pour prisma/testBooking.ts :
+```
+import { PrismaClient } from "@prisma/client";
+import { differenceInYears } from "date-fns";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log("🔍 Test des réservations...");
+
+  const bookings = await prisma.booking.findMany({
+    include: {
+      child: true,
+      workshop: true,
+    },
+  });
+
+  let hasError = false;
+
+  // On stocke les réservations par enfant pour vérifier chevauchement
+  const reservationsByChild: Record<number, { start: Date; end: Date; workshopId: number }[]> = {};
+
+  for (const booking of bookings) {
+    const { child, workshop } = booking;
+
+    // --- 1️⃣ Vérification tranche d’âge ---
+    const age = differenceInYears(workshop.startTime, child.birthDate);
+    if (age < workshop.minAge || age > workshop.maxAge) {
+      console.error(`❌ Erreur âge : ${child.firstName} ${child.lastName} (${age} ans) ne correspond pas à ${workshop.name} [${workshop.minAge}-${workshop.maxAge}]`);
+      hasError = true;
+    }
+
+    // --- 2️⃣ Vérification chevauchement ---
+    if (!reservationsByChild[child.id]) reservationsByChild[child.id] = [];
+
+    const overlapping = reservationsByChild[child.id].some(r =>
+      (workshop.startTime < r.end && workshop.endTime > r.start)
+    );
+
+    if (overlapping) {
+      console.error(`❌ Erreur chevauchement : ${child.firstName} ${child.lastName} a déjà une réservation qui chevauche ${workshop.name}`);
+      hasError = true;
+    }
+
+    reservationsByChild[child.id].push({ start: workshop.startTime, end: workshop.endTime, workshopId: workshop.id });
+  }
+
+  if (!hasError) {
+    console.log("✅ Toutes les réservations sont valides !");
+  }
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+```
+
+💡 Comment ça marche
+On récupère toutes les réservations avec child et workshop.
+On calcule l’âge de l’enfant au moment de l’atelier (differenceInYears).
+On vérifie que chaque réservation n’a aucun chevauchement avec les autres de l’enfant.
+Les doublons sont déjà bloqués par Prisma (@@unique([childId, workshopId])).
+
 
 ---
-
 © 24hKids — Projet éducatif autour du numérique

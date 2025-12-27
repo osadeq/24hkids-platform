@@ -6,10 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "ts-node prisma/seed.ts",
+    "test-bookings": "ts-node prisma/testBookingPro.ts",
+    "fix-bookings": "ts-node prisma/fixBookings.ts",
+    "check-bookings": "npm run seed && npm run test-bookings && npm run fix-bookings"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.1",
     "next": "16.1.1",
+    "prisma": "^6.19.1",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
@@ -21,6 +27,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }

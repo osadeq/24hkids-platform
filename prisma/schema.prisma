@@ -1,14 +1,106 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// prisma/schema.prisma
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// =======================================
+// 24hKids Platform - schema.prisma FINAL
+// =======================================
 
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+// =====================
+// Modèle Parent
+// =====================
+model Parent {
+  id          Int      @id @default(autoincrement())
+  firstName   String
+  lastName    String
+  email       String   @unique
+  phone       String?
+  children    Child[]
+  notifyEmail Boolean  @default(true)
+  notifySMS   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// =====================
+// Modèle Child (Enfant)
+// =====================
+model Child {
+  id          Int       @id @default(autoincrement())
+  firstName   String
+  lastName    String
+  birthDate   DateTime
+  parent      Parent    @relation(fields: [parentId], references: [id])
+  parentId    Int
+  bookings    Booking[]
+  allergies   String?
+  medicalNote String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([parentId])
+}
+
+// =====================
+// Modèle Workshop (Atelier)
+// =====================
+model Workshop {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  minAge      Int
+  maxAge      Int
+  capacity    Int
+  location    String?
+  status      WorkshopStatus @default(ACTIVE)
+  bookings    Booking[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([startTime, endTime])
+}
+
+// Statuts des ateliers
+enum WorkshopStatus {
+  ACTIVE
+  CANCELLED
+  FULL
+}
+
+// =====================
+// Modèle Booking (Réservation)
+// =====================
+model Booking {
+  id          Int       @id @default(autoincrement())
+  child       Child     @relation(fields: [childId], references: [id])
+  childId     Int
+  workshop    Workshop  @relation(fields: [workshopId], references: [id])
+  workshopId  Int
+  status      BookingStatus @default(CONFIRMED)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Un enfant ne peut pas réserver deux fois le même atelier
+  @@unique([childId, workshopId])
+
+  // Index utiles pour les recherches
+  @@index([childId])
+  @@index([workshopId])
+}
+
+// Statuts des réservations
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+  WAITLIST
 }
