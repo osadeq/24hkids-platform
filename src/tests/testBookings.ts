@@ -2,7 +2,7 @@
 
 // 1. Utilise les accolades avec le nom exact de la classe : BookingService
 // 2. Utilise l'extension .js pour la compatibilité ESM de Node.js
-import { BookingService } from '../services/bookingService.ts';
+import { BookingService } from '../services/bookingService';
 
 // Exemple d'utilisation dans ton test :
 async function runTest() {

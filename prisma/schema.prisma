@@ -22,6 +22,7 @@ model Parent {
   firstName   String
   lastName    String
   email       String   @unique
+  password    String
   phone       String?
   children    Child[]
   notifyEmail Boolean  @default(true)

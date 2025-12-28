@@ -1,10 +1,13 @@
 // prisma/seed.ts
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log("🌱 Début du seed...");
+
+  const hashedPassword = await bcrypt.hash("password123", 12);
 
   // =====================
   // Création des Parents
@@ -14,6 +17,7 @@ async function main() {
       firstName: "Alice",
       lastName: "Martin",
       email: "alice.martin@example.com",
+      password: hashedPassword,
       phone: "0600000001",
       notifyEmail: true,
       notifySMS: false,
@@ -25,6 +29,7 @@ async function main() {
       firstName: "Bruno",
       lastName: "Dupont",
       email: "bruno.dupont@example.com",
+      password: hashedPassword,
       phone: "0600000002",
       notifyEmail: true,
       notifySMS: true,
@@ -36,6 +41,7 @@ async function main() {
       firstName: "Caroline",
       lastName: "Lemoine",
       email: "caroline.lemoine@example.com",
+      password: hashedPassword,
       phone: "0600000003",
     },
   });
