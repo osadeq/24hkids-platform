@@ -79,6 +79,15 @@ button:focus-visible, .button:focus-visible {
   outline-offset: 3px;
 }
 
+.button-primary {
+    background-color: var(--text-main);
+    color: var(--accent);
+}
+.button-primary:hover {
+    background-color: var(--accent-hover);
+    color: var(--text-main);
+}
+
 /* Classes utilitaires pour le contraste */
 .contrast-text {
   color: var(--text-main);
@@ -91,3 +100,5 @@ button:focus-visible, .button:focus-visible {
 .contrast-border {
   border-color: var(--border-subtle);
 }
+
+

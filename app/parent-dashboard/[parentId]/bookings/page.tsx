@@ -94,7 +94,7 @@ export default function ParentBookingsPage({ params }: ParentBookingsPageProps) 
       loadBookings(); // Recharger les réservations après annulation
     } catch (e: any) {
       console.error('Failed to cancel booking:', e);
-      setCancelError(e.data?.message || e.message || 'Une erreur est survenue lors de l\'annulation de la réservation.');
+      setCancelError(e.data?.message || e.message || "Une erreur est survenue lors de l'annulation de la réservation.");
     }
   };
 
@@ -125,7 +125,7 @@ export default function ParentBookingsPage({ params }: ParentBookingsPageProps) 
         workshopId,
       });
       
-      const successMessage = `Réservation ${newBooking.status === 'WAITLIST' ? 'en liste d\'attente' : 'confirmée'} pour l'atelier.`;
+      const successMessage = `Réservation ${newBooking.status === 'WAITLIST' ? "en liste d'attente" : "confirmée"} pour l'atelier.`;
       setBookingSuccess(prev => ({ ...prev, [childId]: successMessage }));
       
       // Recharger les réservations

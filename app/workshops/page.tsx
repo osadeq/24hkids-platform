@@ -196,7 +196,7 @@ export default function WorkshopsPage() {
                       <p><span className="font-medium">Lieu :</span> {workshop.location || 'Non spécifié'}</p>
                     </div>
                   </div>
-                  <div className="p-6 bg-background border-t-2 border-foreground flex justify-end">
+                  <div className="p-6 bg-background border-t-2 border-foreground flex justify-start">
                     <Link
                       href={`/workshops/${workshop.id}`}
                       className="bg-primary text-foreground px-6 py-2 rounded-full font-semibold hover:bg-primary-hover transition-colors"

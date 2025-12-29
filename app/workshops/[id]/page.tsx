@@ -171,7 +171,7 @@ export default function WorkshopDetailPage({ params }: WorkshopDetailPageProps) 
         )
       );
 
-      setBookingSuccess(`Réservation ${newBooking.status === 'WAITLIST' ? 'en liste d\'attente' : 'confirmée'} pour ${newBooking.status === 'WAITLIST' ? 'votre enfant a été placé en liste d\'attente.' : 'votre enfant !'}`);
+      setBookingSuccess(`Réservation ${newBooking.status === 'WAITLIST' ? "en liste d'attente" : "confirmée"} pour ${newBooking.status === 'WAITLIST' ? "votre enfant a été placé en liste d'attente." : "votre enfant !"}`);
     } catch (e: any) {
       console.error('Failed to create booking:', e);
       console.log('Error details:', e);
@@ -205,7 +205,7 @@ export default function WorkshopDetailPage({ params }: WorkshopDetailPageProps) 
       setBookingSuccess('Réservation annulée avec succès.');
     } catch (e: any) {
       console.error('Failed to cancel booking:', e);
-      const errorMessage = e.message || 'Une erreur est survenue lors de l\'annulation.';
+      const errorMessage = e.message || "Une erreur est survenue lors de l'annulation.";
       setBookingError(errorMessage);
     } finally {
       setBookingLoading(prev => ({ ...prev, [childId]: false }));
@@ -317,7 +317,7 @@ export default function WorkshopDetailPage({ params }: WorkshopDetailPageProps) 
                               : 'bg-gray-100 text-gray-800'
                           }`}>
                             {child.booking.status === 'CONFIRMED' ? 'Confirmé' :
-                             child.booking.status === 'WAITLIST' ? 'En liste d\'attente' :
+                             child.booking.status === 'WAITLIST' ? "En liste d'attente" :
                              'Annulé'}
                           </span>
                         </div>

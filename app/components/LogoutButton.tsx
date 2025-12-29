@@ -38,7 +38,7 @@ export default function LogoutButton({ onLogout }: LogoutButtonProps) {
   return (
     <button
       onClick={handleLogout}
-      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+      className="button-primary hover:button px-4 py-2 rounded-md text-sm font-medium border border-primary-foreground/20"
     >
       Se déconnecter
     </button>
